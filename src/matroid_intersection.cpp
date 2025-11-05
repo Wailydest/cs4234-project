@@ -39,8 +39,9 @@ std::set<int> BaselineAlgorithm::run() {
 
 LocalSearchAlgorithm::LocalSearchAlgorithm(
     const std::vector<std::shared_ptr<Matroid>>& matroids,
-    double epsilon)
-    : matroids_(matroids), epsilon_(epsilon), iterations_(0) {}
+    double epsilon,
+    int maxIterations)
+    : matroids_(matroids), epsilon_(epsilon), iterations_(0), maxIterations_(maxIterations) {}
 
 bool LocalSearchAlgorithm::allIndependent(const std::set<int>& S) const {
     for (const auto& matroid : matroids_) {
@@ -139,8 +140,9 @@ bool LocalSearchAlgorithm::improve(std::set<int>& current) {
                             return true;
                         }
                         
-                        // Try adding third element
-                        for (size_t c = b + 1; c < std::min(candidates.size(), b + 5); ++c) {
+                        // Try adding third element (limited search for efficiency)
+                        const size_t maxCandidates = 10; // Limit search space for performance
+                        for (size_t c = b + 1; c < std::min(candidates.size(), b + maxCandidates); ++c) {
                             std::set<int> candidate3 = candidate;
                             candidate3.insert(candidates[c]);
                             
@@ -164,10 +166,9 @@ std::set<int> LocalSearchAlgorithm::run() {
     std::set<int> solution = baseline.run();
     
     iterations_ = 0;
-    int maxIterations = 100; // Reduced for efficiency
     
     // Local search improvement
-    while (iterations_ < maxIterations) {
+    while (iterations_ < maxIterations_) {
         iterations_++;
         
         if (!improve(solution)) {

@@ -8,6 +8,7 @@ import subprocess
 import json
 import os
 import sys
+import argparse
 from typing import Dict, List, Tuple
 import statistics
 
@@ -92,21 +93,46 @@ class MatroidTester:
 
 def main():
     """Run all experiments."""
+    parser = argparse.ArgumentParser(
+        description='Test matroid intersection algorithms',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument('--executable', default='./build/matroid_intersection',
+                       help='Path to matroid_intersection executable')
+    parser.add_argument('--epsilon-values', type=float, nargs='+', default=[0.5, 1.0],
+                       help='Epsilon values to test')
+    parser.add_argument('--num-runs', type=int, default=3,
+                       help='Number of runs per configuration')
+    parser.add_argument('--bipartite-n', type=int, default=15,
+                       help='Bipartite graph left partition size')
+    parser.add_argument('--bipartite-m', type=int, default=15,
+                       help='Bipartite graph right partition size')
+    parser.add_argument('--bipartite-p', type=float, default=0.3,
+                       help='Bipartite graph edge probability')
+    parser.add_argument('--matching-n', type=int, default=10,
+                       help='3D matching dimension size')
+    parser.add_argument('--matching-p', type=float, default=0.3,
+                       help='3D matching edge probability')
+    parser.add_argument('--hamiltonian-n', type=int, default=12,
+                       help='Hamiltonian path graph size')
+    parser.add_argument('--hamiltonian-p', type=float, default=0.4,
+                       help='Hamiltonian path edge probability')
+    
+    args = parser.parse_args()
+    
     # Check if executable exists
-    executable = "./build/matroid_intersection"
-    if not os.path.exists(executable):
-        print(f"Error: Executable not found at {executable}")
+    if not os.path.exists(args.executable):
+        print(f"Error: Executable not found at {args.executable}")
         print("Please build the project first:")
         print("  mkdir build && cd build")
         print("  cmake ..")
         print("  make")
         sys.exit(1)
     
-    tester = MatroidTester(executable)
+    tester = MatroidTester(args.executable)
     
-    # Test configurations
-    epsilon_values = [0.5, 1.0]  # Reduced for faster testing
-    num_runs = 3  # Reduced for faster testing
+    epsilon_values = args.epsilon_values
+    num_runs = args.num_runs
     
     print("\n" + "="*60)
     print("MATROID INTERSECTION EXPERIMENTS")
@@ -118,9 +144,9 @@ def main():
     print("Testing on Erdős-Rényi bipartite graphs")
     
     params_k2 = {
-        'n': 15,
-        'm': 15,
-        'p': 0.3,
+        'n': args.bipartite_n,
+        'm': args.bipartite_m,
+        'p': args.bipartite_p,
         'k': 2
     }
     
@@ -137,8 +163,8 @@ def main():
     print("Testing on random 3D matching instances")
     
     params_k3 = {
-        'n': 10,
-        'p': 0.3
+        'n': args.matching_n,
+        'p': args.matching_p
     }
     
     results_k3 = tester.run_sensitivity_analysis(
@@ -154,8 +180,8 @@ def main():
     print("Testing on random graphs")
     
     params_ham = {
-        'n': 12,
-        'p': 0.4
+        'n': args.hamiltonian_n,
+        'p': args.hamiltonian_p
     }
     
     results_ham = tester.run_sensitivity_analysis(
