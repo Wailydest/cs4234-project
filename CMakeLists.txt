@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
+
+# Set C++ compiler to g++
+set(CMAKE_CXX_COMPILER "g++")
+
 project(MatroidIntersection)
 
 set(CMAKE_CXX_STANDARD 17)
