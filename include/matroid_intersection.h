@@ -1,50 +1,58 @@
 #ifndef MATROID_INTERSECTION_H
 #define MATROID_INTERSECTION_H
 
-#include "matroid.h"
-#include <vector>
-#include <set>
+#include "matroid_implementations.h"
 #include <memory>
+#include <set>
+#include <vector>
 
-// Baseline algorithm: 1/k approximation
+class ApproximationSolution {
+public:
+  ApproximationSolution(double approximationRatio, std::vector<int> solution);
+  double getApproximationRatio() const { return approximationRatio_; }
+  const std::vector<int> &getSolution() const { return solution_; }
+
+private:
+  double approximationRatio_;
+  std::vector<int> solution_;
+};
+
+// Baseline greedy algorithm: 1/k approximation
 class BaselineAlgorithm {
 public:
-    BaselineAlgorithm(const std::vector<std::shared_ptr<Matroid>>& matroids);
-    
-    // Run the baseline algorithm
-    std::set<int> run();
-    
+  BaselineAlgorithm(const std::shared_ptr<MatroidProblem> &matroidProblem);
+
+  // Run the baseline algorithm
+  ApproximationSolution run();
+
 private:
-    std::vector<std::shared_ptr<Matroid>> matroids_;
+  std::shared_ptr<MatroidProblem> matroidProblem_;
+};
+
+class Kuhn2dMatchingAlgorithm {
+public:
+  Kuhn2dMatchingAlgorithm(
+      const std::shared_ptr<MatchingProblem> &matchingProblem);
+
+  // Run the Hopcroft-Karp algorithm
+  ApproximationSolution run();
+
+private:
+  std::shared_ptr<MatchingProblem> matchingProblem_;
 };
 
 // Local search algorithm: 2/(k+epsilon) approximation
 class LocalSearchAlgorithm {
 public:
-    LocalSearchAlgorithm(const std::vector<std::shared_ptr<Matroid>>& matroids, 
-                        double epsilon, 
-                        int maxIterations = 100);
-    
-    // Run the local search algorithm
-    std::set<int> run();
-    
-    // Get number of iterations performed
-    int getIterations() const { return iterations_; }
-    
-    // Set maximum iterations
-    void setMaxIterations(int maxIter) { maxIterations_ = maxIter; }
-    
+  LocalSearchAlgorithm(const std::shared_ptr<MatroidProblem> &matroidProblem,
+                       int timeLimitSeconds);
+
+  // Run the local search algorithm
+  std::vector<ApproximationSolution> run();
+
 private:
-    std::vector<std::shared_ptr<Matroid>> matroids_;
-    double epsilon_;
-    int iterations_;
-    int maxIterations_;
-    
-    // Check if all matroids are independent on a set
-    bool allIndependent(const std::set<int>& S) const;
-    
-    // Try to improve solution by local search
-    bool improve(std::set<int>& current);
+  std::shared_ptr<MatroidProblem> matroidProblem_;
+  int timeLimitSeconds_;
 };
 
 #endif // MATROID_INTERSECTION_H

@@ -14,15 +14,29 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Add include directory
 include_directories(include)
 
+# Fetch nlohmann/json library
+include(FetchContent)
+FetchContent_Declare(
+  json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(json)
+
 # Source files
 set(SOURCES
+    src/matroid_problem.cpp
     src/matroid_intersection.cpp
     src/matroid_implementations.cpp
     src/graph_generator.cpp
+    src/validation.cpp
 )
 
 # Create executable
 add_executable(matroid_intersection src/main.cpp ${SOURCES})
+
+# Link nlohmann/json (header-only, but ensures proper include path)
+target_link_libraries(matroid_intersection PRIVATE nlohmann_json::nlohmann_json)
 
 # Enable warnings
 if(MSVC)

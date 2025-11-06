@@ -1,246 +1,161 @@
 #include "matroid_implementations.h"
 #include <algorithm>
+#include <cassert>
 #include <queue>
 #include <unordered_set>
 
-// PartitionMatroid implementation
-PartitionMatroid::PartitionMatroid(int groundSetSize, const std::vector<std::vector<int>>& partitions)
-    : groundSetSize_(groundSetSize) {
-    for (size_t i = 0; i < partitions.size(); ++i) {
-        for (int elem : partitions[i]) {
-            elementToPartition_[elem] = i;
-        }
+// MatchingProblem implementation
+MatchingProblem::MatchingProblem(int graphRank, int vertexPerPartitionCount,
+                                 const std::vector<std::vector<int>> &edge_list)
+    : MatroidProblem(static_cast<int>(edge_list.size()), graphRank),
+      edges_(edge_list), vertexPerPartitionCount_(vertexPerPartitionCount) {
+
+  // ensure all edges have the same rank
+  for (const auto &edge : edge_list) {
+    if (static_cast<int>(edge.size()) != graphRank) {
+      throw std::invalid_argument("All edges must have the same rank");
     }
+  }
+
+  // For each partition, create a partition matroid set
+  // The partition matroid ensures at most one edge containing each vertex is
+  // selected
+  std::vector<std::vector<int>> edge_to_vertices(matroidQuantity_);
+  for (int edge_i = 0; edge_i < groundSetSize_; ++edge_i) {
+    for (int p = 0; p < matroidQuantity_; ++p) {
+      edge_to_vertices[p].push_back(edges_[edge_i][p]);
+    }
+  }
+
+  for (int p = 0; p < matroidQuantity_; ++p) {
+    matroids_.push_back(std::make_unique<PartitionMatroidSet>(
+        groundSetSize_, vertexPerPartitionCount_, edge_to_vertices[p]));
+  }
 }
 
-bool PartitionMatroid::isIndependent(const std::set<int>& S) const {
-    std::unordered_set<int> usedPartitions;
-    for (int elem : S) {
-        auto it = elementToPartition_.find(elem);
-        if (it == elementToPartition_.end()) {
-            return false; // element not in ground set
-        }
-        int partition = it->second;
-        if (usedPartitions.count(partition)) {
-            return false; // two elements from same partition
-        }
-        usedPartitions.insert(partition);
-    }
-    return true;
+// PartitionMatroidSet implementation
+MatchingProblem::PartitionMatroidSet::PartitionMatroidSet(
+    int groundSetSize, int vertexPerPartitionCount,
+    const std::vector<int> &edge_to_vertex)
+    : groundSetSize_(groundSetSize),
+      vertexPerPartitionCount_(vertexPerPartitionCount),
+      edge_to_vertex_(edge_to_vertex) {
+  is_vertex_used_ = std::vector<bool>(vertexPerPartitionCount_, false);
+  is_edge_used_ = std::vector<bool>(groundSetSize_, false);
 }
 
-std::vector<int> PartitionMatroid::getGroundSet() const {
-    std::vector<int> result;
-    for (const auto& pair : elementToPartition_) {
-        result.push_back(pair.first);
-    }
-    std::sort(result.begin(), result.end());
-    return result;
+bool MatchingProblem::PartitionMatroidSet::tryAddElement(int element) {
+  assert(element >= 0 && element < groundSetSize_);
+  int vertex = edge_to_vertex_[element];
+  if (vertex < 0 || vertex >= vertexPerPartitionCount_) {
+    throw std::invalid_argument("Vertex index out of bounds");
+  }
+
+  if (is_edge_used_[element]) {
+    throw std::invalid_argument("Edge already used");
+  }
+
+  if (is_vertex_used_[vertex]) {
+    return false;
+  }
+  is_vertex_used_[vertex] = true;
+  is_edge_used_[element] = true;
+  return true;
 }
 
-// UniformMatroid implementation
-UniformMatroid::UniformMatroid(int groundSetSize, int k)
-    : groundSetSize_(groundSetSize), k_(k) {}
+void MatchingProblem::PartitionMatroidSet::removeElement(int element) {
+  assert(element >= 0 && element < groundSetSize_);
+  int vertex = edge_to_vertex_[element];
+  if (vertex < 0 || vertex >= vertexPerPartitionCount_) {
+    throw std::invalid_argument("Vertex index out of bounds");
+  }
+  if (!is_edge_used_[element]) {
+    throw std::invalid_argument("Edge not used");
+  }
 
-bool UniformMatroid::isIndependent(const std::set<int>& S) const {
-    return (int)S.size() <= k_;
+  is_vertex_used_[vertex] = false;
+  is_edge_used_[element] = false;
 }
 
-std::vector<int> UniformMatroid::getGroundSet() const {
-    std::vector<int> result;
-    for (int i = 0; i < groundSetSize_; ++i) {
-        result.push_back(i);
-    }
-    return result;
+// HamiltonianPathProblem implementation
+HamiltonianPathProblem::HamiltonianPathProblem(
+    int groundSetSize, int vertexCount,
+    const std::vector<std::pair<int, int>> &edges)
+    : MatroidProblem(groundSetSize, 3), edges_(edges) {
+  matroids_.push_back(
+      std::make_unique<HamiltonianPathProblem::SingleIncomingEdgeMatroidSet>(
+          groundSetSize, vertexCount, edges, true));
+  matroids_.push_back(
+      std::make_unique<HamiltonianPathProblem::SingleIncomingEdgeMatroidSet>(
+          groundSetSize, vertexCount, edges, false));
+  matroids_.push_back(
+      std::make_unique<HamiltonianPathProblem::GraphicMatroidSet>(
+          groundSetSize, vertexCount, edges));
 }
 
-// BipartiteMatchingMatroid implementation
-BipartiteMatchingMatroid::BipartiteMatchingMatroid(
-    int n, int m, const std::vector<std::pair<int, int>>& edges)
-    : n_(n), m_(m), edges_(edges) {}
-
-bool BipartiteMatchingMatroid::isMatching(const std::set<int>& edgeIndices) const {
-    std::unordered_set<int> usedLeft, usedRight;
-    for (int idx : edgeIndices) {
-        if (idx < 0 || idx >= (int)edges_.size()) {
-            return false;
-        }
-        int left = edges_[idx].first;
-        int right = edges_[idx].second;
-        
-        if (usedLeft.count(left) || usedRight.count(right)) {
-            return false; // vertex already matched
-        }
-        usedLeft.insert(left);
-        usedRight.insert(right);
-    }
-    return true;
+HamiltonianPathProblem::SingleIncomingEdgeMatroidSet::
+    SingleIncomingEdgeMatroidSet(int groundSetSize, int vertexCount,
+                                 const std::vector<std::pair<int, int>> &edges,
+                                 bool is_incoming)
+    : vertexCount_(vertexCount), groundSetSize_(groundSetSize) {
+  edge_to_ = std::vector<int>(groundSetSize_);
+  is_vertex_used_ = std::vector<bool>(vertexCount_, false);
+  for (int i = 0; i < groundSetSize_; i++) {
+    edge_to_[i] = is_incoming ? edges[i].second : edges[i].first;
+  }
 }
 
-bool BipartiteMatchingMatroid::isIndependent(const std::set<int>& S) const {
-    return isMatching(S);
+bool HamiltonianPathProblem::SingleIncomingEdgeMatroidSet::tryAddElement(
+    int element) {
+  assert(element >= 0 && element < groundSetSize_);
+  if (is_vertex_used_[edge_to_[element]]) {
+    return false;
+  }
+  is_vertex_used_[edge_to_[element]] = true;
+  return true;
 }
 
-std::vector<int> BipartiteMatchingMatroid::getGroundSet() const {
-    std::vector<int> result;
-    for (size_t i = 0; i < edges_.size(); ++i) {
-        result.push_back(i);
-    }
-    return result;
+void HamiltonianPathProblem::SingleIncomingEdgeMatroidSet::removeElement(
+    int element) {
+  assert(element >= 0 && element < groundSetSize_);
+  if (!is_vertex_used_[edge_to_[element]]) {
+    throw std::invalid_argument("Edge can't be present in the set if the "
+                                "corresponding vertex is not used");
+  }
+  is_vertex_used_[edge_to_[element]] = false;
 }
 
-// Union-Find for GraphicMatroid
-class UnionFind {
-public:
-    UnionFind(int n) : parent_(n), rank_(n, 0) {
-        for (int i = 0; i < n; ++i) {
-            parent_[i] = i;
-        }
-    }
-    
-    int find(int x) {
-        if (parent_[x] != x) {
-            parent_[x] = find(parent_[x]);
-        }
-        return parent_[x];
-    }
-    
-    bool unite(int x, int y) {
-        int px = find(x);
-        int py = find(y);
-        if (px == py) return false;
-        
-        if (rank_[px] < rank_[py]) {
-            parent_[px] = py;
-        } else if (rank_[px] > rank_[py]) {
-            parent_[py] = px;
-        } else {
-            parent_[py] = px;
-            rank_[px]++;
-        }
-        return true;
-    }
-    
-private:
-    std::vector<int> parent_;
-    std::vector<int> rank_;
-};
-
-// GraphicMatroid implementation
-GraphicMatroid::GraphicMatroid(int n, const std::vector<std::pair<int, int>>& edges)
-    : n_(n), edges_(edges) {}
-
-bool GraphicMatroid::isForest(const std::set<int>& edgeIndices) const {
-    UnionFind uf(n_);
-    for (int idx : edgeIndices) {
-        if (idx < 0 || idx >= (int)edges_.size()) {
-            return false;
-        }
-        int u = edges_[idx].first;
-        int v = edges_[idx].second;
-        
-        if (!uf.unite(u, v)) {
-            return false; // creates a cycle
-        }
-    }
-    return true;
+HamiltonianPathProblem::GraphicMatroidSet::GraphicMatroidSet(
+    int groundSetSize, int vertexCount,
+    const std::vector<std::pair<int, int>> &edges)
+    : vertexCount_(vertexCount), groundSetSize_(groundSetSize) {
+  next_ = std::vector<int>(vertexCount_, -1);
+  edges_ = edges;
 }
 
-bool GraphicMatroid::isIndependent(const std::set<int>& S) const {
-    return isForest(S);
+bool HamiltonianPathProblem::GraphicMatroidSet::tryAddElement(int element) {
+  assert(element >= 0 && element < groundSetSize_);
+  int vertex = edges_[element].second;
+  int count = 0;
+  while (next_[vertex] != -1) {
+    vertex = next_[vertex];
+    ++count;
+    if (count > vertexCount_) {
+      throw std::runtime_error("Cycle detected");
+    }
+  }
+  if (vertex == edges_[element].first) {
+    // the edge would form a cycle
+    return false;
+  }
+  next_[edges_[element].first] = edges_[element].second;
+  return true;
 }
 
-std::vector<int> GraphicMatroid::getGroundSet() const {
-    std::vector<int> result;
-    for (size_t i = 0; i < edges_.size(); ++i) {
-        result.push_back(i);
-    }
-    return result;
-}
-
-// PathMatroid implementation
-PathMatroid::PathMatroid(int n, const std::vector<std::pair<int, int>>& edges)
-    : n_(n), edges_(edges) {}
-
-bool PathMatroid::isPath(const std::set<int>& edgeIndices) const {
-    if (edgeIndices.empty()) {
-        return true;
-    }
-    
-    // Build adjacency list
-    std::vector<std::vector<int>> adj(n_);
-    for (int idx : edgeIndices) {
-        if (idx < 0 || idx >= (int)edges_.size()) {
-            return false;
-        }
-        int u = edges_[idx].first;
-        int v = edges_[idx].second;
-        adj[u].push_back(v);
-        adj[v].push_back(u);
-    }
-    
-    // Check degree: at most 2 vertices can have degree > 1
-    int endpointCount = 0;
-    int startVertex = -1;
-    for (int i = 0; i < n_; ++i) {
-        if (adj[i].size() > 2) {
-            return false; // not a path
-        }
-        if (adj[i].size() == 1) {
-            endpointCount++;
-            startVertex = i;
-        } else if (adj[i].size() > 0 && startVertex == -1) {
-            startVertex = i;
-        }
-    }
-    
-    if (endpointCount > 2) {
-        return false;
-    }
-    
-    // Check connectivity: all edges form a single connected component
-    if (startVertex == -1) {
-        return true; // no edges
-    }
-    
-    std::vector<bool> visited(n_, false);
-    std::queue<int> q;
-    q.push(startVertex);
-    visited[startVertex] = true;
-    int visitedCount = 0;
-    
-    while (!q.empty()) {
-        int u = q.front();
-        q.pop();
-        visitedCount++;
-        
-        for (int v : adj[u]) {
-            if (!visited[v]) {
-                visited[v] = true;
-                q.push(v);
-            }
-        }
-    }
-    
-    // Count vertices with non-zero degree
-    int nonZeroDegree = 0;
-    for (int i = 0; i < n_; ++i) {
-        if (adj[i].size() > 0) {
-            nonZeroDegree++;
-        }
-    }
-    
-    return visitedCount == nonZeroDegree;
-}
-
-bool PathMatroid::isIndependent(const std::set<int>& S) const {
-    return isPath(S);
-}
-
-std::vector<int> PathMatroid::getGroundSet() const {
-    std::vector<int> result;
-    for (size_t i = 0; i < edges_.size(); ++i) {
-        result.push_back(i);
-    }
-    return result;
+void HamiltonianPathProblem::GraphicMatroidSet::removeElement(int element) {
+  assert(element >= 0 && element < groundSetSize_);
+  if (next_[edges_[element].first] != edges_[element].second) {
+    throw std::invalid_argument("Edge not found");
+  }
+  next_[edges_[element].first] = -1;
 }

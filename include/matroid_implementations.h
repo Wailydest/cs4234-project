@@ -1,88 +1,88 @@
 #ifndef MATROID_IMPLEMENTATIONS_H
 #define MATROID_IMPLEMENTATIONS_H
 
-#include "matroid.h"
-#include <vector>
-#include <set>
+#include "matroid_problem.h"
 #include <map>
+#include <memory>
+#include <set>
+#include <unordered_set>
+#include <vector>
 
-// Partition Matroid: Elements partitioned into groups, at most one from each group
-class PartitionMatroid : public Matroid {
+// Matching problem: find a matching in a hypergraph
+class MatchingProblem : public MatroidProblem {
 public:
-    PartitionMatroid(int groundSetSize, const std::vector<std::vector<int>>& partitions);
-    
-    bool isIndependent(const std::set<int>& S) const override;
-    int getGroundSetSize() const override { return groundSetSize_; }
-    std::vector<int> getGroundSet() const override;
-    
+  // edge_list[i] is the list of vertices in edge i, and groundSetSize is the
+  // number of vertices
+  MatchingProblem(int graphRank, int vertexPerPartitionCount,
+                  const std::vector<std::vector<int>> &edge_list);
+
+  // Get the edges of the matching problem
+  const std::vector<std::vector<int>> &getEdges() const { return edges_; }
+
+  int getVertexPerPartitionCount() const { return vertexPerPartitionCount_; }
+
 private:
+  std::vector<std::vector<int>> edges_;
+  int vertexPerPartitionCount_;
+
+  // Correponds to each part of the multipartite graph
+  class PartitionMatroidSet : public MatroidSet {
+  public:
+    PartitionMatroidSet(int groundSetSize, int vertexPerPartitionCount,
+                        const std::vector<int> &edge_to_vertex);
+
+    bool tryAddElement(int element) override;
+    void removeElement(int element) override;
+
+  private:
+    int groundSetSize_;           // number of edges in the ground set
+    int vertexPerPartitionCount_; // number of vertices in each partition
+    std::vector<int>
+        edge_to_vertex_; // for each edge, the index of the vertex it belongs to
+    std::vector<bool> is_vertex_used_; // true if the vertex is used
+    std::vector<bool> is_edge_used_;   // true if the edge is used
+  };
+};
+
+class HamiltonianPathProblem : public MatroidProblem {
+public:
+  HamiltonianPathProblem(int groundSetSize, int vertexCount,
+                         const std::vector<std::pair<int, int>> &edges);
+
+  const std::vector<std::pair<int, int>> &getEdges() const { return edges_; }
+
+  // using single class for both incoming and outgoing edges because they are
+  // symmetric
+  class SingleIncomingEdgeMatroidSet : public MatroidSet {
+  public:
+    SingleIncomingEdgeMatroidSet(int groundSetSize, int vertexCount,
+                                 const std::vector<std::pair<int, int>> &edges,
+                                 bool is_incoming);
+    bool tryAddElement(int element) override;
+    void removeElement(int element) override;
+
+  private:
+    int vertexCount_;
     int groundSetSize_;
-    std::map<int, int> elementToPartition_; // element -> partition index
-};
+    std::vector<int> edge_to_;         // [E]
+    std::vector<bool> is_vertex_used_; // [V]
+  };
+  class GraphicMatroidSet : public MatroidSet {
+  public:
+    GraphicMatroidSet(int groundSetSize, int vertexCount,
+                      const std::vector<std::pair<int, int>> &edges);
+    bool tryAddElement(int element) override;
+    void removeElement(int element) override;
 
-// Uniform Matroid: Any set of size at most k is independent
-class UniformMatroid : public Matroid {
-public:
-    UniformMatroid(int groundSetSize, int k);
-    
-    bool isIndependent(const std::set<int>& S) const override;
-    int getGroundSetSize() const override { return groundSetSize_; }
-    std::vector<int> getGroundSet() const override;
-    
-private:
+  private:
+    int vertexCount_;
     int groundSetSize_;
-    int k_;
-};
+    std::vector<int> next_;                  // [V]
+    std::vector<std::pair<int, int>> edges_; // [E]
+  };
 
-// Bipartite Matching Matroid: Independent sets correspond to matchings
-class BipartiteMatchingMatroid : public Matroid {
-public:
-    BipartiteMatchingMatroid(int n, int m, const std::vector<std::pair<int, int>>& edges);
-    
-    bool isIndependent(const std::set<int>& S) const override;
-    int getGroundSetSize() const override { return edges_.size(); }
-    std::vector<int> getGroundSet() const override;
-    
 private:
-    int n_, m_; // left and right partition sizes
-    std::vector<std::pair<int, int>> edges_;
-    
-    // Check if edge indices form a matching
-    bool isMatching(const std::set<int>& edgeIndices) const;
-};
-
-// Graphic Matroid for Hamiltonian Path: Independent sets are forests
-class GraphicMatroid : public Matroid {
-public:
-    GraphicMatroid(int n, const std::vector<std::pair<int, int>>& edges);
-    
-    bool isIndependent(const std::set<int>& S) const override;
-    int getGroundSetSize() const override { return edges_.size(); }
-    std::vector<int> getGroundSet() const override;
-    
-private:
-    int n_; // number of vertices
-    std::vector<std::pair<int, int>> edges_;
-    
-    // Check if edge set forms a forest (no cycles)
-    bool isForest(const std::set<int>& edgeIndices) const;
-};
-
-// Path Matroid: Elements form a path
-class PathMatroid : public Matroid {
-public:
-    PathMatroid(int n, const std::vector<std::pair<int, int>>& edges);
-    
-    bool isIndependent(const std::set<int>& S) const override;
-    int getGroundSetSize() const override { return edges_.size(); }
-    std::vector<int> getGroundSet() const override;
-    
-private:
-    int n_; // number of vertices
-    std::vector<std::pair<int, int>> edges_;
-    
-    // Check if edge set forms a path
-    bool isPath(const std::set<int>& edgeIndices) const;
+  std::vector<std::pair<int, int>> edges_;
 };
 
 #endif // MATROID_IMPLEMENTATIONS_H
