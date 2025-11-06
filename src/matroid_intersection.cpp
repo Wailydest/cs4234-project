@@ -103,7 +103,7 @@ double computeApproximationRatio(int s, int k) {
   if (k != 3)
     throw std::invalid_argument(
         "Approximation ratio not supported for k != 2 or k != 3");
-  return 2.0 / (3 + 2 * pow(s, -0.1546)); // the formula to be confirmed
+  return 2.0 / (3 + 2 * pow(s, -0.3562)); // the formula to be confirmed
 }
 
 std::vector<int> convertMaskToSolution(const std::vector<bool> &solutionMask) {
@@ -207,6 +207,10 @@ std::vector<ApproximationSolution> LocalSearchAlgorithm::run() {
           break;
         }
       }
+      if (s == solutionSize) {
+        // achieved the maximum possible solution size
+        break;
+      }
     } while (success && !timeLimitExceeded);
     if (timeLimitExceeded) {
       std::cerr << "Time limit of " << timeLimitSeconds_
@@ -226,8 +230,13 @@ std::vector<ApproximationSolution> LocalSearchAlgorithm::run() {
       // we can provide a guaranteed approximation ratio at this step for s
       double ratio =
           computeApproximationRatio(s, matroidProblem_->getMatroidQuantity());
+      if (s == solutionSize) {
+        ratio = 1.0;
+      }
       solutions.push_back(
           ApproximationSolution(ratio, convertMaskToSolution(solutionMask)));
+      if (s == solutionSize)
+        break;
     }
     std::cerr << "At step " << s << " we found a solution of size "
               << solutionSize << std::endl;
