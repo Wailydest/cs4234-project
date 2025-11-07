@@ -36,7 +36,7 @@ Check out the example notebook for execution examples.
 
 ## Ideas for future work and for the report
 
- The distribution of the solutions to the same problem
+* The distribution of the solutions to the same problem
   * I.e., how stable the algorithm is
   * Also would answer the question of how useful it is to rerun the algorithm on the same graph multiple times
 * Study the relationship between $s$ (maximum step size), $n$, $p$, and the solution size/approximation ratio
