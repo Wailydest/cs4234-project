@@ -3,6 +3,7 @@
 #include <cassert>
 #include <queue>
 #include <unordered_set>
+#include <stdexcept>
 
 // MatchingProblem implementation
 MatchingProblem::MatchingProblem(int graphRank, int vertexPerPartitionCount,

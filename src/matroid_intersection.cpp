@@ -108,7 +108,7 @@ double computeApproximationRatio(int s, int k) {
 
 std::vector<int> convertMaskToSolution(const std::vector<bool> &solutionMask) {
   std::vector<int> solution;
-  for (int i = 0; i < solutionMask.size(); i++) {
+  for (int i = 0; i < (int) solutionMask.size(); i++) {
     if (solutionMask[i]) {
       solution.push_back(i);
     }

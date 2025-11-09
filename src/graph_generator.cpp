@@ -1,5 +1,6 @@
 #include "graph_generator.h"
 #include <algorithm>
+#include <stdexcept>
 
 GraphGenerator::GraphGenerator(unsigned int seed)
     : rng_(seed), dist_(0.0, 1.0) {}

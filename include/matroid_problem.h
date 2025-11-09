@@ -2,6 +2,7 @@
 #define MATROID_H
 
 #include <set>
+#include <memory>
 #include <unordered_set>
 #include <vector>
 

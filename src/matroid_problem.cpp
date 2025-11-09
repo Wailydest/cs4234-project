@@ -1,4 +1,5 @@
 #include "matroid_problem.h"
+#include <stdexcept>
 
 bool MatroidProblem::tryAddElement(int element) {
   int successfulAdditions = 0;

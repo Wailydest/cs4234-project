@@ -2,11 +2,12 @@
 #include <algorithm>
 #include <utility>
 #include <vector>
+#include <stdexcept>
 
 void check_solution_set(int groundSetSize, const std::vector<int> &solution) {
   std::vector<int> sorted_solution = solution;
   std::sort(sorted_solution.begin(), sorted_solution.end());
-  for (int i = 0; i < sorted_solution.size(); i++) {
+  for (int i = 0; i < (int) sorted_solution.size(); i++) {
     if (i && sorted_solution[i] == sorted_solution[i - 1]) {
       throw std::invalid_argument(
           "Solution error: Duplicate element in solution");
@@ -29,7 +30,7 @@ void validate_bipartite_matching(int n,
   }
   check_solution_set(edges.size(), solution);
   std::vector<std::vector<bool>> used_vertices(2, std::vector<bool>(n, false));
-  for (int i = 0; i < solution.size(); i++) {
+  for (int i = 0; i < (int) solution.size(); i++) {
     if (used_vertices[0][edges[solution[i]].first]) {
       throw std::invalid_argument("Solution error: Edge already used");
     }
@@ -59,7 +60,7 @@ void validate_3d_matching(int n, const std::vector<std::vector<int>> &edges,
   check_solution_set(edges.size(), solution);
   // Track used vertices in each of the 3 partitions
   std::vector<std::vector<bool>> used_vertices(3, std::vector<bool>(n, false));
-  for (int i = 0; i < solution.size(); i++) {
+  for (int i = 0; i < (int) solution.size(); i++) {
     const auto &edge = edges[solution[i]];
     for (int p = 0; p < 3; p++) {
       if (used_vertices[p][edge[p]]) {
